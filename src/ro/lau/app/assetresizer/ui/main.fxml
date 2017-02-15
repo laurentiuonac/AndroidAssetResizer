@@ -1,0 +1,6 @@
+<?import javafx.scene.layout.StackPane?>
+<?import javafx.scene.text.Text?>
+<StackPane fx:controller="ro.lau.app.assetresizer.controller.MainController"
+           xmlns:fx="http://javafx.com/fxml" alignment="center">
+    <Text text="Drag here"/>
+</StackPane>
