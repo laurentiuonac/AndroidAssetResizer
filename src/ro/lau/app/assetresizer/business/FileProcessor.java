@@ -3,6 +3,7 @@ package ro.lau.app.assetresizer.business;
 import javafx.scene.control.Alert;
 import javafx.scene.layout.Region;
 
+import java.awt.image.BufferedImage;
 import java.io.File;
 import java.util.List;
 
@@ -18,6 +19,8 @@ public class FileProcessor {
     private static final String PATH_DRAWABLE_PREFIX = "drawable-";
     private static final String PATH_MIPMAP_PREFIX = "mipmap-";
 
+    boolean isDrawable = false;
+
     private ImageProcessor imageProcessor;
     private Density originalDensity;
 
@@ -31,7 +34,7 @@ public class FileProcessor {
             return false;
         }
 
-        if (!isPathCorrect(fileList)) {
+        if (!validatePath(fileList)) {
             showWrongResourceLocationDialog();
             return false;
         }
@@ -40,11 +43,38 @@ public class FileProcessor {
     }
 
     public void processFiles(List<File> fileList) {
+        Density[] densities = Density.values();
 
+        for (File originalFile : fileList) {
+            BufferedImage image = imageProcessor.readImageFromFile(originalFile);
+            if (image == null) continue;
+
+            for (Density density : densities) {
+                if (density == originalDensity) continue;
+
+                BufferedImage resizedImage = imageProcessor.resizeImage(image,
+                        density.getMultiplier() / originalDensity.getMultiplier());
+                writeImageForDensity(originalFile, resizedImage, density);
+            }
+        }
+    }
+
+    private void writeImageForDensity(File originalFile, BufferedImage image, Density density) {
+        File drawableFolder = originalFile.getParentFile();
+        File resFolder = drawableFolder.getParentFile();
+
+        String resizedDrawableFolder = (isDrawable ? PATH_DRAWABLE_PREFIX : PATH_MIPMAP_PREFIX) + density.getName();
+        File newFile = new File(resFolder.getAbsolutePath()
+                + File.separatorChar + resizedDrawableFolder
+                + File.separatorChar + originalFile.getName());
+
+        if (newFile.getParentFile().exists() || newFile.getParentFile().mkdirs()) {
+            imageProcessor.writeImageToFile(image, newFile);
+        }
     }
 
     @SuppressWarnings("SimplifiableIfStatement")
-    private boolean isPathCorrect(List<File> fileList) {
+    private boolean validatePath(List<File> fileList) {
         if (fileList == null || fileList.size() == 0)
             return false;
 
@@ -54,15 +84,15 @@ public class FileProcessor {
             return false;
 
         File resFolder = drawableFolder.getParentFile();
-        if (resFolder == null)
-            return false;
-
-        if (!resFolder.getName().equals(PATH_RES))
+        if (resFolder == null || !resFolder.getName().equals(PATH_RES))
             return false;
 
         for (Density density : Density.values()) {
             if (drawableFolder.getName().equals(PATH_DRAWABLE_PREFIX + density.getName())
-                    || drawableFolder.getName().equals(PATH_DRAWABLE_PREFIX + density.getName())) {
+                    || drawableFolder.getName().equals(PATH_MIPMAP_PREFIX + density.getName())) {
+                isDrawable = drawableFolder.getName().contains(PATH_DRAWABLE_PREFIX);
+                originalDensity = density;
+
                 return true;
             }
         }
@@ -113,29 +143,5 @@ public class FileProcessor {
                 "resized resources will be places in the according folders.");
         alert.getDialogPane().setMinHeight(Region.USE_PREF_SIZE);
         alert.show();
-    }
-
-    private enum Density {
-        MDPI("mdpi", 1f),
-        HDPI("hdpi", 1.5f),
-        XHDPI("xhdpi", 2f),
-        XXHDPI("xxhdpi", 3f),
-        XXXHDPI("xxxhdpi", 4f);
-
-        private String name;
-        private float multiplier;
-
-        Density(String name, float multiplier) {
-            this.name = name;
-            this.multiplier = multiplier;
-        }
-
-        public String getName() {
-            return name;
-        }
-
-        public float getMultiplier() {
-            return multiplier;
-        }
     }
 }
