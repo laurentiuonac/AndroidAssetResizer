@@ -50,7 +50,8 @@ public class FileProcessor {
             if (image == null) continue;
 
             for (Density density : densities) {
-                if (density == originalDensity) continue;
+                // Avoid creating images for original densities or bigger ones
+                if (density == originalDensity || density.getMultiplier() > originalDensity.getMultiplier()) continue;
 
                 BufferedImage resizedImage = imageProcessor.resizeImage(image,
                         density.getMultiplier() / originalDensity.getMultiplier());
